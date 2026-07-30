@@ -1,0 +1,7 @@
+_metadata/
+test/
+manifest_*.json
+*.crx
+*.pem
+.DS_Store
+node_modules/

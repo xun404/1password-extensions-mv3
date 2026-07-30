@@ -1,0 +1,58 @@
+name: Package & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set VERSION from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update manifest version
+        run: |
+          python3 -c "
+          import json, os
+          p = 'manifest.json'
+          with open(p) as f:
+              m = json.load(f)
+          m['version'] = os.environ['VERSION']
+          with open(p, 'w') as f:
+              json.dump(m, f, indent=2, ensure_ascii=False)
+          print(f'Updated version to {os.environ[\"VERSION\"]}')
+          "
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+
+      - name: Package extension
+        run: |
+          mkdir -p dist
+          zip -r "dist/1password-mv3-v$VERSION.zip" \
+            assets/ \
+            ext/ \
+            _locales/ \
+            background-wrapper.js \
+            fillStyle.css \
+            global.min.js \
+            injected.min.js \
+            manifest.json \
+            -x "*.DS_Store"
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "v${{ steps.version.outputs.VERSION }}"
+          files: dist/*.zip
+          generate_release_notes: true
